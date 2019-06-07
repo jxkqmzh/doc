@@ -1,0 +1,85 @@
+diff --git a/Makefile b/Makefile
+index 78ec1322bad9..a200aa4dc843 100644
+--- a/Makefile
++++ b/Makefile
+@@ -332,7 +332,8 @@ KBUILD_CPPFLAGS := -D__KERNEL__ $(LINUXINCLUDE)
+ 
+ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+ 		   -fno-strict-aliasing -fno-common \
+-		   -Werror-implicit-function-declaration
++		   -Werror-implicit-function-declaration \
++			 -fno-pie
+ KBUILD_AFLAGS   := -D__ASSEMBLY__
+ 
+ # Read KERNELRELEASE from include/config/kernel.release (if it exists)
+@@ -431,7 +432,8 @@ ifeq ($(config-targets),1)
+ include $(srctree)/arch/$(SRCARCH)/Makefile
+ export KBUILD_DEFCONFIG
+ 
+-config %config: scripts_basic outputmakefile FORCE
++#config %config: scripts_basic outputmakefile FORCE
++%config: scripts_basic outputmakefile FORCE
+ 	$(Q)mkdir -p include/linux include/config
+ 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
+ 
+@@ -1500,7 +1502,7 @@ endif
+ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
+ 
+ # Modules
+-/ %/: prepare scripts FORCE
++%/: prepare scripts FORCE
+ 	$(cmd_crmodverdir)
+ 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1) \
+ 	$(build)=$(build-dir)
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index 80b7ba4056db..c493045e7532 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -4,7 +4,7 @@ mainmenu "Linux Kernel Configuration for x86"
+ # Select 32 or 64 bit
+ config 64BIT
+ 	bool "64-bit kernel" if ARCH = "x86"
+-	default ARCH = "x86_64"
++	default ARCH = "x86_32"
+ 	help
+ 	  Say yes to build a 64-bit kernel - formerly known as x86_64
+ 	  Say no to build a 32-bit kernel - formerly known as i386
+diff --git a/arch/x86/kernel/Makefile_32 b/arch/x86/kernel/Makefile_32
+index 5e48bd24eaf4..c41f4298ede8 100644
+--- a/arch/x86/kernel/Makefile_32
++++ b/arch/x86/kernel/Makefile_32
+@@ -59,7 +59,7 @@ targets += vsyscall-note_32.o vsyscall_32.lds
+ 
+ # The DSO images are built using a special linker script.
+ quiet_cmd_syscall = SYSCALL $@
+-      cmd_syscall = $(CC) -m elf_i386 -nostdlib $(SYSCFLAGS_$(@F)) \
++      cmd_syscall = $(CC) -nostdlib $(SYSCFLAGS_$(@F)) \
+ 		          -Wl,-T,$(filter-out FORCE,$^) -o $@
+ 
+ export CPPFLAGS_vsyscall_32.lds += -P -C -Ui386
+diff --git a/arch/x86/vdso/Makefile b/arch/x86/vdso/Makefile
+index e7bff0fbac23..1b51771fc6a7 100644
+--- a/arch/x86/vdso/Makefile
++++ b/arch/x86/vdso/Makefile
+@@ -17,7 +17,7 @@ targets += vdso.so vdso.so.dbg vdso.lds $(vobjs-y) vdso-syms.o
+ 
+ # The DSO images are built using a special linker script.
+ quiet_cmd_syscall = SYSCALL $@
+-      cmd_syscall = $(CC) -m elf_x86_64 -nostdlib $(SYSCFLAGS_$(@F)) \
++      cmd_syscall = $(CC) -m64 -nostdlib $(SYSCFLAGS_$(@F)) \
+ 		          -Wl,-T,$(filter-out FORCE,$^) -o $@
+ 
+ export CPPFLAGS_vdso.lds += -P -C
+diff --git a/include/asm-x86/irq_32.h b/include/asm-x86/irq_32.h
+index aca9c96e8e6b..f3c86d93ed84 100644
+--- a/include/asm-x86/irq_32.h
++++ b/include/asm-x86/irq_32.h
+@@ -41,7 +41,7 @@ extern int irqbalance_disable(char *str);
+ extern void fixup_irqs(cpumask_t map);
+ #endif
+ 
+-unsigned int do_IRQ(struct pt_regs *regs);
++//unsigned int do_IRQ(struct pt_regs *regs);
+ void init_IRQ(void);
+ void __init native_init_IRQ(void);
+ 
